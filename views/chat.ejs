@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="sidebar">
+            <h3>Chat Rooms</h3>
+            <ul id="rooms-list">
+                <li><a href="#" onclick="joinRoom('room1')" style="color: #BDD5EA;">Room 1</a></li>
+                <li><a href="#" onclick="joinRoom('room2')" style="color: #BDD5EA;">Room 2</a></li>
+            </ul>
+            <a href="/logout" style="color: #CA3C25;">Logout</a>
+        </div>
+        <div class="chatbox">
+            <h3 id="room-name" style="color: #BDD5EA;">Select a room</h3>
+            <div id="messages" style="height: 300px; overflow-y: auto;"></div>
+            <form id="message-form">
+                <input id="message" type="text" placeholder="Type a message" autocomplete="off" required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const username = "<%= username %>";
+        let currentRoom = null;
+
+        function joinRoom(room) {
+            if (currentRoom) {
+                socket.emit('leaveRoom', { username, room: currentRoom });
+                socket.off('message');
+                socket.off('chatHistory');
+            }
+
+            currentRoom = room;
+            socket.emit('joinRoom', { username, room });
+
+            document.getElementById('room-name').textContent = `Room: ${room}`;
+            document.getElementById('messages').innerHTML = '';
+
+            socket.on('chatHistory', (messages) => {
+                messages.forEach(message => {
+                    appendMessage(message.username, message.text);
+                });
+            });
+
+            socket.on('message', (message) => {
+                appendMessage(message.username, message.text);
+            });
+        }
+
+        function appendMessage(user, text) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${user}: ${text}`;
+            document.getElementById('messages').appendChild(messageElement);
+            messageElement.scrollIntoView();
+        }
+
+        document.getElementById('message-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message');
+            const msg = input.value.trim();
+            if (msg && currentRoom) {
+                socket.emit('chatMessage', msg);
+                input.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
